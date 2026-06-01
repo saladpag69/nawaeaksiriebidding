@@ -112,6 +112,9 @@ BASE_HTML = """
                  border-radius: 50%; display: inline-block;
                  animation: pulse 1s infinite; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+  .proj-name { max-width: 380px; }
+  .proj-name span { word-break: break-word; font-size: 13px; }
+  .proj-name span:hover { white-space: normal; }
 </style>
 </head>
 <body>
@@ -273,7 +276,8 @@ RESULTS_HTML = BASE_HTML.replace("{% block content %}{% endblock %}", """
       <thead>
         <tr>
           {% for h in headers %}
-          <th onclick="sortTable({{ loop.index0 }})" style="cursor:pointer;user-select:none">
+          <th onclick="sortTable({{ loop.index0 }})" style="cursor:pointer;user-select:none;
+              {% if h == 'ชื่อโครงการ' %}min-width:320px{% endif %}">
             {{ h }} ⇅
           </th>
           {% endfor %}
@@ -281,11 +285,13 @@ RESULTS_HTML = BASE_HTML.replace("{% block content %}{% endblock %}", """
       </thead>
       <tbody>
         {% for row in rows %}
-        <tr>
+        <tr data-prov="{{ row.get('จังหวัด','') }}"
+            data-method="{{ row.get('วิธีการจัดหา','') }}"
+            data-status="{{ row.get('สถานะ','') }}">
           {% for h in headers %}
-          <td>
+          <td{% if h == 'ชื่อโครงการ' %} class="proj-name"{% endif %}>
             {% if h == 'ลิงก์' and row[h] %}
-              <a href="{{ row[h] }}" target="_blank" class="badge badge-blue">เปิด</a>
+              <a href="{{ row[h] }}" target="_blank" class="badge badge-blue">🔗 เปิด</a>
             {% elif h == 'สถานะ' %}
               {% if 'ยกเลิก' in row[h] %}
                 <span class="badge badge-red">{{ row[h] }}</span>
@@ -295,7 +301,14 @@ RESULTS_HTML = BASE_HTML.replace("{% block content %}{% endblock %}", """
                 <span class="badge badge-gray">{{ row[h] }}</span>
               {% endif %}
             {% elif h == 'วงเงินงบประมาณ' %}
-              <span style="font-weight:600">{{ row[h] }}</span>
+              <span style="font-weight:700;color:#1a3a5c">{{ row[h] }}</span>
+            {% elif h == 'ชื่อโครงการ' %}
+              {# ตัดข้อความยาว + tooltip เต็ม #}
+              {% set full = row[h] %}
+              {% set short = full[:120] + ('…' if full|length > 120 else '') %}
+              <span title="{{ full }}" style="display:block;line-height:1.5">{{ short }}</span>
+            {% elif h == 'วันที่ยื่นซอง' and row[h] %}
+              <span style="color:#d97706;font-weight:600">📅 {{ row[h] }}</span>
             {% else %}
               {{ row[h] }}
             {% endif %}
@@ -322,11 +335,10 @@ function filterTable(){
   const fs = document.getElementById('fStatus').value;
   const rows = document.querySelectorAll('#tbl tbody tr');
   rows.forEach(tr => {
-    const txt = tr.innerText.toLowerCase();
-    const cells = tr.querySelectorAll('td');
-    const prov   = cells[1]?.innerText || '';
-    const method = cells[2]?.innerText || '';
-    const status = cells[9]?.innerText || cells[cells.length-2]?.innerText || '';
+    const txt    = tr.innerText.toLowerCase();
+    const prov   = tr.dataset.prov   || '';
+    const method = tr.dataset.method || '';
+    const status = tr.dataset.status || '';
     const show = (!q || txt.includes(q))
               && (!fp || prov.includes(fp))
               && (!fm || method.includes(fm))
@@ -441,11 +453,16 @@ def get_log():
     })
 
 
+HIDDEN_COLS = {"วันที่ค้นหา", "วิธีการจัดหา", "ลำดับ"}
+
+
 @app.route("/results")
 def results():
-    cfg = load_config()
     headers, rows = load_latest_csv()
     csv_count = len(list(RESULTS_DIR.glob("procurement_*.csv")))
+
+    # กรอง column ที่ไม่ต้องการแสดง
+    headers = [h for h in headers if h not in HIDDEN_COLS]
 
     prov_set   = sorted({r.get("จังหวัด", "") for r in rows if r.get("จังหวัด")})
     method_set = sorted({r.get("วิธีการจัดหา", "") for r in rows if r.get("วิธีการจัดหา")})
