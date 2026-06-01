@@ -21,6 +21,12 @@ CONFIG_FILE = BASE_DIR / "config.json"
 RESULTS_DIR = BASE_DIR / "results"
 RESULTS_DIR.mkdir(exist_ok=True)
 
+# เขียน credentials.json จาก env var (สำหรับ Railway)
+_creds_env = os.environ.get("GOOGLE_CREDENTIALS_JSON")
+if _creds_env:
+    with open(BASE_DIR / "credentials.json", "w", encoding="utf-8") as _f:
+        _f.write(_creds_env)
+
 app = Flask(__name__)
 
 # --- global run state ---
@@ -485,8 +491,9 @@ def results():
 
 
 if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
     print("\n" + "="*50)
     print("  ระบบประมูลภาครัฐ — Web UI")
-    print("  เปิด: http://localhost:5000")
+    print(f"  เปิด: http://localhost:{port}")
     print("="*50 + "\n")
-    app.run(debug=False, host="0.0.0.0", port=5000, threaded=True)
+    app.run(debug=False, host="0.0.0.0", port=port, threaded=True)
