@@ -1,0 +1,6 @@
+credentials.json
+__pycache__/
+*.pyc
+results/
+Python312Libsite-packages/
+.git/

@@ -1,9 +1,8 @@
 [build]
-builder = "nixpacks"
+builder = "dockerfile"
 
 [deploy]
-startCommand = "gunicorn web_app:app --bind 0.0.0.0:$PORT --timeout 300 --workers 1 --threads 4"
 healthcheckPath = "/"
-healthcheckTimeout = 100
+healthcheckTimeout = 120
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
