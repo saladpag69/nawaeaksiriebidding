@@ -29,6 +29,13 @@ if _creds_env:
 
 app = Flask(__name__)
 
+# custom Jinja filter: ดึง project number จากข้อความ
+import re as _re
+@app.template_filter("regex_search")
+def regex_search_filter(s, pattern):
+    m = _re.search(pattern, s or "")
+    return m.group(0) if m else ""
+
 # --- global run state ---
 run_state = {"running": False, "log": [], "last_run": ""}
 
@@ -118,9 +125,8 @@ BASE_HTML = """
                  border-radius: 50%; display: inline-block;
                  animation: pulse 1s infinite; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
-  .proj-name { max-width: 380px; }
-  .proj-name span { word-break: break-word; font-size: 13px; }
-  .proj-name span:hover { white-space: normal; }
+  .proj-name { min-width: 360px; max-width: 600px; }
+  .proj-name span { font-size: 13px; white-space: normal; }
 </style>
 </head>
 <body>
@@ -287,13 +293,17 @@ RESULTS_HTML = BASE_HTML.replace("{% block content %}{% endblock %}", """
             {{ h }} ⇅
           </th>
           {% endfor %}
+          <th style="background:#1a3a5c;color:#fff;padding:10px 12px;min-width:90px">เอกสาร</th>
         </tr>
       </thead>
       <tbody>
         {% for row in rows %}
+        {% set proj_title = row.get('ชื่อโครงการ','') %}
+        {% set proj_num = proj_title | regex_search('\\d{11,}') %}
         <tr data-prov="{{ row.get('จังหวัด','') }}"
             data-method="{{ row.get('วิธีการจัดหา','') }}"
-            data-status="{{ row.get('สถานะ','') }}">
+            data-status="{{ row.get('สถานะ','') }}"
+            data-proj="{{ proj_num or '' }}">
           {% for h in headers %}
           <td{% if h == 'ชื่อโครงการ' %} class="proj-name"{% endif %}>
             {% if h == 'ลิงก์' and row[h] %}
@@ -309,10 +319,7 @@ RESULTS_HTML = BASE_HTML.replace("{% block content %}{% endblock %}", """
             {% elif h == 'วงเงินงบประมาณ' %}
               <span style="font-weight:700;color:#1a3a5c">{{ row[h] }}</span>
             {% elif h == 'ชื่อโครงการ' %}
-              {# ตัดข้อความยาว + tooltip เต็ม #}
-              {% set full = row[h] %}
-              {% set short = full[:120] + ('…' if full|length > 120 else '') %}
-              <span title="{{ full }}" style="display:block;line-height:1.5">{{ short }}</span>
+              <span style="display:block;line-height:1.6;word-break:break-word">{{ row[h] }}</span>
             {% elif h == 'วันที่ยื่นซอง' and row[h] %}
               <span style="color:#d97706;font-weight:600">📅 {{ row[h] }}</span>
             {% else %}
@@ -320,6 +327,21 @@ RESULTS_HTML = BASE_HTML.replace("{% block content %}{% endblock %}", """
             {% endif %}
           </td>
           {% endfor %}
+          {# ปุ่มเอกสาร — ดึง project number จาก data-proj #}
+          <td style="white-space:nowrap;vertical-align:middle">
+            {% if proj_num %}
+              <a href="https://process3.gprocurement.go.th/egp2procmainWeb/procsearch.sch?homeflag=A&proc_id=FPRO9965&servlet=FPRO9965Servlet&projectId={{ proj_num }}&announceType=2"
+                 target="_blank" class="badge badge-blue" title="ดูประกาศทั้งหมดของโครงการนี้">
+                📄 ประกาศ
+              </a><br><br>
+              <a href="https://process3.gprocurement.go.th/egp2procmainWeb/procsearch.sch?homeflag=A&proc_id=FPRO9965&servlet=FPRO9965Servlet&projectId={{ proj_num }}&announceType=15"
+                 target="_blank" class="badge badge-gray" title="ดูประกาศราคากลาง">
+                💰 ราคากลาง
+              </a>
+            {% else %}
+              <span style="color:#ccc;font-size:12px">—</span>
+            {% endif %}
+          </td>
         </tr>
         {% endfor %}
       </tbody>

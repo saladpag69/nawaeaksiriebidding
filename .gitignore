@@ -3,3 +3,5 @@ __pycache__/
 *.pyc
 Python312Libsite-packages/
 results/
+.claude/
+local-iterator-*.json

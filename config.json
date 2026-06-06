@@ -2,7 +2,8 @@
   "search_filters": {
     "province_ids": [
       "140000",
-      "190000"
+      "190000",
+      "160000"
     ],
     "method_ids": [
       "16"
